@@ -150,14 +150,14 @@ export async function collectBundledPiEntries(): Promise<BundledPiEntry[]> {
 				// an import worked from source and failed inside a binary.
 				const glob = new Bun.Glob(`**/*${pattern.sourceSuffix}`);
 				const matches: string[] = [];
-				for await (const match of glob.scan({ cwd: sourceDir, onlyFiles: true })) {
-					matches.push(match);
+				for await (const rawMatch of glob.scan({ cwd: sourceDir, onlyFiles: true })) {
+					matches.push(rawMatch.split("\\").join("/"));
 				}
 				matches.sort();
 				for (const match of matches) {
 					if (!match.endsWith(pattern.sourceSuffix)) continue;
 					const basename = match.slice(0, match.length - pattern.sourceSuffix.length);
-					const segments = basename.split("/");
+					const segments = basename.split(/[/\\]/);
 					// Every directory on the way has to be importable too: a private or
 					// hidden folder is no more exported than a private file.
 					if (segments.some(segment => segment.startsWith(".") || segment.startsWith("_"))) continue;

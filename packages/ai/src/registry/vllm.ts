@@ -1,8 +1,9 @@
 import * as AIError from "../error";
-import type { OAuthController, OAuthLoginCallbacks, OAuthProvider } from "./oauth/types";
+import type { OAuthController, OAuthLoginCallbacks } from "./oauth/types";
 import type { ProviderDefinition } from "./types";
 
-const PROVIDER_ID: OAuthProvider = "vllm";
+// BocomCoder: type widened to string (vllm provider stripped from OAuthProvider union)
+const PROVIDER_ID: string = "vllm";
 const AUTH_URL = "https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html";
 const DEFAULT_LOCAL_BASE_URL = "http://127.0.0.1:8000/v1";
 const DEFAULT_LOCAL_TOKEN = "vllm-local";

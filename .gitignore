@@ -89,3 +89,22 @@ packages/coding-agent/bench/boot-baseline.json
 /bazel-testlogs
 /bazel-pi
 /.bazelrc.user
+
+# Bazel full output (symlink dir)
+bazel-oh-my-pi/
+
+# Local test/scratch scripts
+hello-test*.ts
+hello-test*.exe
+test-compile.ts
+test-minimal-compile.ts
+scripts/test-build.ts
+
+# Windows native addon archives
+*.tar.gz
+
+# Local build scripts (not upstream)
+packages/coding-agent/scripts/build-win32.ts
+packages/coding-agent/scripts/bundle-only.ts
+packages/coding-agent/scripts/diag-build.ts
+packages/coding-agent/scripts/diag-entries.ts

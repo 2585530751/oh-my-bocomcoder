@@ -398,10 +398,8 @@ async function getOAuthAccessFromStorage(provider: OAuthProvider): Promise<OAuth
 			// expired-but-refreshable credential gets rotated before discovery,
 			// and identity metadata (accountId/projectId/email) flows through
 			// for Codex/Antigravity downstream calls.
-			let access = await authStorage.getOAuthAccess(provider);
-			if (!access && provider === "google-antigravity") {
-				access = await authStorage.getOAuthAccess("google-gemini-cli");
-			}
+		// BocomCoder: google-antigravity fallback removed (provider stripped)
+		let access = await authStorage.getOAuthAccess(provider);
 			return access ?? null;
 		} finally {
 			authStorage.close();
@@ -415,83 +413,14 @@ async function getOAuthAccessFromStorage(provider: OAuthProvider): Promise<OAuth
 	}
 }
 
-/**
- * Fetch available Antigravity models from the API using the discovery module.
- * Returns empty array if no auth is available (previous models used as fallback).
- */
-async function fetchAntigravityModels(): Promise<ModelSpec<"google-gemini-cli">[]> {
-	const access = await getOAuthAccessFromStorage("google-antigravity");
-	if (!access) {
-		console.log("No Antigravity or Gemini CLI credentials found, will use previous models.");
-		console.log("Tip: If you are logged in under a specific profile, run with OMP_PROFILE=<name>.");
-		return [];
-	}
-	try {
-		console.log("Fetching models from Antigravity API...");
-		const discovered = await fetchAntigravityDiscoveryModels({
-			token: access.accessToken,
-			endpoint: ANTIGRAVITY_ENDPOINT,
-		});
-		if (discovered === null) {
-			console.warn("Antigravity API fetch failed, will use previous models");
-			return [];
-		}
-		if (discovered.length > 0) {
-			console.log(`Fetched ${discovered.length} models from Antigravity API`);
-			return discovered;
-		}
-		console.warn("Antigravity API returned no models, will use previous models");
-		return [];
-	} catch (error) {
-		console.error("Failed to fetch Antigravity models:", error);
-		return [];
-	}
+// BocomCoder: fetchAntigravityModels removed (google-antigravity provider stripped)
+async function fetchAntigravityModels(): Promise<never[]> {
+	return [];
 }
 
-/**
- * Resolve every stored Codex OAuth account and union their account-scoped
- * `/models` catalogs through the same manager path the runtime uses (#6265).
- * Fails closed: any account that cannot resolve or fetch aborts discovery and
- * returns [] (non-authoritative), so a partial per-account snapshot never
- * replaces the previous bundle's model set.
- */
-async function fetchCodexDiscoveryModels(): Promise<ModelSpec<"openai-codex-responses">[]> {
-	const accounts: OpenAICodexAccount[] = [];
-	try {
-		const authStorage = await discoverAuthStorage();
-		try {
-			const accesses = await authStorage.getOAuthAccesses("openai-codex");
-			for (const access of accesses) {
-				if (!access.ok) {
-					console.warn(`Codex account failed to resolve (${access.error}), keeping previous models.`);
-					return [];
-				}
-				accounts.push({ accessToken: access.accessToken, accountId: access.accountId });
-			}
-		} finally {
-			authStorage.close();
-		}
-	} catch (error) {
-		console.warn(
-			"Warning: Failed to retrieve Codex credentials:",
-			error instanceof Error ? error.message : String(error),
-		);
-		return [];
-	}
-	if (accounts.length === 0) {
-		console.log("No Codex credentials found, will use previous models.");
-		console.log("Tip: If you are logged in under a specific profile, run with OMP_PROFILE=<name>.");
-		return [];
-	}
-	console.log(`Fetching models from Codex API for ${accounts.length} account(s)...`);
-	const options = openaiCodexModelManagerOptions({ resolveAccounts: async () => accounts });
-	const models = await options.fetchDynamicModels?.();
-	if (!models) {
-		console.warn("Codex API fetch failed, keeping previous models.");
-		return [];
-	}
-	console.log(`Fetched ${models.length} models from Codex API`);
-	return [...models];
+// BocomCoder: fetchCodexDiscoveryModels removed (openai-codex provider stripped)
+async function fetchCodexDiscoveryModels(): Promise<never[]> {
+	return [];
 }
 
 async function generateModels() {

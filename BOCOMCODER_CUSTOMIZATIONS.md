@@ -55,12 +55,13 @@ scratch/
 
 > 保留 4 个 Provider：openai、ollama、openrouter、litellm（+ ollama-cloud 作为 ollama 的云变体）。
 > 其余 78+ Provider 的注册和描述符已移除，但底层源码文件保留（作为死代码，编译正常）。
+> `models.json` 已清空（原 2.1MB/64 provider/4120 模型 → `{}`），所有模型通过运行时发现和用户配置提供。
 
 ### 设计决策
 - **保留源码文件**：`packages/ai/src/providers/` 和 `packages/ai/src/registry/` 中的 78+ 个已移除 Provider 的源码文件未删除，仅从注册表和描述符中移除。这样 `stream.ts`、`mapOptionsForApi` 等函数中的类型引用仍可编译，且未来恢复 Provider 只需重新注册。
 - **编译时完整性检查**：`registry.ts` 中的 `_CheckRegistryComplete` 类型检查确保 `KnownProvider`（来自 `pi-catalog`）与 `PROVIDER_REGISTRY` 一致。通过同步精简 `descriptors.ts` 和 `registry.ts`，此检查自然通过。
 - **OAuth 类型自动派生**：`OAuthProviderUnion` 从 `PROVIDER_REGISTRY` 派生，精简后自动只包含有 `login` 方法的 4 个 Provider。
-
+- **models.json 清空**：编译时静态模型目录已清空为 `{}`，`GeneratedProvider` 类型放宽为 `string` 以兼容死代码。运行时模型来源：① Ollama/OpenRouter 等的动态发现 ② 用户 `~/.bocomcoder/agent/models.json` 自定义配置。
 ### 修改的文件
 
 | 文件 | 改动 | 说明 |
@@ -72,8 +73,9 @@ scratch/
 | `packages/catalog/scripts/generate-models.ts` | `fetchAntigravityModels` 和 `fetchCodexDiscoveryModels` 改为空 stub | 返回 `never[]`，避免引用已移除 Provider 的类型 |
 | `packages/catalog/test/*.test.ts` | 删除 15 个引用已移除 Provider 的测试文件 | aiand、alibaba-token-plan、amazon-bedrock-openai、azure、coreweave、descriptors、gmi-cloud、issue-2105-repro、issue-830-repro、meta、novita、sakana、siliconflow、zenmux、zhipu |
 | `packages/ai/test/*.test.ts` | 删除 6 个引用已移除 Provider 的测试文件 | alibaba-endpoint-selection、auth-storage-broker-no-sentinel、auth-storage-codex-selection、github-copilot-login、google-gemini-cli-alignment、provider-registry |
-| `packages/coding-agent/test/model-resolver.test.ts` | 删除 | 引用已移除的 `anthropic` Provider |
-
+| `packages/catalog/src/models.json` | 清空为 `{}` | 原 2.1MB/64 provider/4120 模型全部移除，运行时通过动态发现和用户配置提供 |
+| `packages/catalog/src/models.ts` | `GeneratedProvider` 类型从 `keyof typeof MODELS` 改为 `string` | 兼容死代码中对已移除 Provider 的调用 |
+| `packages/catalog/test/*.test.ts` | 删除 6 个引用已清空 models.json 的测试文件 | models-lazy-provider-cache、issue-3067-repro、issue-772-repro、minimax-bundled-catalog、umans-provider、zai-bundled-catalog |
 ### 未修改的文件（死代码保留）
 
 以下文件仍包含已移除 Provider 的代码，但编译正常，运行时不会被调用：

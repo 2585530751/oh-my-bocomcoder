@@ -27,7 +27,8 @@ function getProviderModels(provider: string): Map<string, Model<Api>> | undefine
 	return providerModels;
 }
 
-export type GeneratedProvider = keyof typeof MODELS;
+// BocomCoder: GeneratedProvider widened to string (models.json cleared, dead code still references removed providers)
+export type GeneratedProvider = string;
 
 export function getBundledModel<TApi extends Api = Api>(provider: GeneratedProvider, modelId: string): Model<TApi> {
 	const providerModels = getProviderModels(provider);

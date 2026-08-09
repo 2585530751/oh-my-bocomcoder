@@ -29,7 +29,8 @@ export type OAuthCredentials = {
 	authorizedAt?: number;
 };
 
-export type OAuthProvider = OAuthProviderUnion;
+// BocomCoder: widened from OAuthProviderUnion to string (all built-in providers removed)
+export type OAuthProvider = string;
 
 export type OAuthProviderId = OAuthProvider | (string & {});
 

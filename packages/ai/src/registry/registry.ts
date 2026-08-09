@@ -1,11 +1,3 @@
-import type { KnownProvider } from "@oh-my-pi/pi-catalog";
-import { litellmProvider } from "./litellm";
-import { ollamaCloudProvider } from "./ollama-cloud";
-import { ollamaProvider } from "./ollama";
-import { openaiProvider } from "./openai";
-import { openrouterProvider } from "./openrouter";
-import type { ProviderDefinition } from "./types";
-
 /**
  * The single per-provider list. Adding a provider = create `./providers/<id>.ts`
  * and add its export here. Every legacy structure (`KnownProvider`/`OAuthProvider`
@@ -13,15 +5,13 @@ import type { ProviderDefinition } from "./types";
  * maps) is derived from this registry. Order matches the interactive `/login`
  * list for the loginable providers; non-login model providers are appended.
  *
- * BocomCoder: Stripped to only openai/ollama/openrouter/litellm providers.
+ * BocomCoder: All built-in providers removed. Custom providers are loaded
+ * independently from ~/.bocomcoder/agent/models.json via model-registry.
  */
-const ALL = [
-	ollamaProvider,
-	ollamaCloudProvider,
-	openrouterProvider,
-	litellmProvider,
-	openaiProvider,
-];
+import type { KnownProvider } from "@oh-my-pi/pi-catalog";
+import type { ProviderDefinition } from "./types";
+
+const ALL: readonly ProviderDefinition[] = [];
 
 export type RegistryDef = (typeof ALL)[number];
 export const PROVIDER_REGISTRY: readonly ProviderDefinition[] = ALL;
@@ -32,12 +22,8 @@ export function getProviderDefinition(id: string): ProviderDefinition | undefine
 	return BY_ID.get(id);
 }
 
-/** Compile-time completeness: every catalog chat-model provider must have a registry definition. */
-type _MissingCatalogProviders = Exclude<KnownProvider, RegistryDef["id"]>;
-type _CheckRegistryComplete = _MissingCatalogProviders extends never
-	? true
-	: ["registry is missing catalog providers", _MissingCatalogProviders];
-true satisfies _CheckRegistryComplete;
+// BocomCoder: compile-time completeness check removed (no built-in providers remain;
+// KnownProvider is now string, making the Exclude check meaningless).
 
 /** Loginable providers (those carrying a `login` flow). */
 export type OAuthProviderUnion = Extract<RegistryDef, { login: object }>["id"];

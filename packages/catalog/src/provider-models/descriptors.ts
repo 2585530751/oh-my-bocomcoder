@@ -5,53 +5,12 @@
  * half (env keys, OAuth login/refresh) stays in the pi-ai registry, which
  * type-checks itself against `KnownProvider` from this table.
  *
- * BocomCoder: Stripped to only openai/ollama/openrouter/litellm providers.
+ * BocomCoder: All built-in providers removed. Models come exclusively from
+ * user config (~/.bocomcoder/agent/models.json) and runtime discovery.
  */
 import type { ModelManagerConfig, ProviderCatalogEntry, ProviderDescriptor } from "./descriptor-types";
-import { ollamaCloudModelManagerOptions } from "./ollama";
-import {
-	litellmModelManagerOptions,
-	ollamaModelManagerOptions,
-	openaiModelManagerOptions,
-	openrouterModelManagerOptions,
-} from "./openai-compat";
 
-export const CATALOG_PROVIDERS = [
-	{
-		id: "ollama",
-		defaultModel: "gpt-oss:20b",
-		envVars: ["OLLAMA_API_KEY"],
-		createModelManagerOptions: (config: ModelManagerConfig) => ollamaModelManagerOptions(config),
-		allowUnauthenticated: true,
-	},
-	{
-		id: "ollama-cloud",
-		defaultModel: "gpt-oss:120b",
-		envVars: ["OLLAMA_CLOUD_API_KEY"],
-		createModelManagerOptions: (config: ModelManagerConfig) => ollamaCloudModelManagerOptions(config),
-		catalogDiscovery: { label: "Ollama Cloud", oauthProvider: "ollama-cloud" },
-	},
-	{
-		id: "openai",
-		defaultModel: "gpt-5.5",
-		envVars: ["OPENAI_API_KEY"],
-		createModelManagerOptions: (config: ModelManagerConfig) => openaiModelManagerOptions(config),
-	},
-	{
-		id: "openrouter",
-		defaultModel: "openai/gpt-5.5",
-		envVars: ["OPENROUTER_API_KEY"],
-		createModelManagerOptions: (config: ModelManagerConfig) => openrouterModelManagerOptions(config),
-		catalogDiscovery: { label: "OpenRouter", allowUnauthenticated: true },
-	},
-	{
-		id: "litellm",
-		defaultModel: "claude-opus-4-8",
-		envVars: ["LITELLM_API_KEY"],
-		createModelManagerOptions: (config: ModelManagerConfig) => litellmModelManagerOptions(config),
-		catalogDiscovery: { label: "LiteLLM", allowUnauthenticated: true },
-	},
-] as const satisfies readonly ProviderCatalogEntry[];
+export const CATALOG_PROVIDERS: readonly ProviderCatalogEntry[] = [];
 
 /** Chat-model providers — every entry in the catalog table. */
 export type KnownProvider = (typeof CATALOG_PROVIDERS)[number]["id"];

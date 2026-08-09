@@ -51,29 +51,33 @@ scratch/
 - **原因**：Windows 平台路径分隔符兼容性修复
 
 ---
-## Provider 精简（Plan B）
+## Provider 精简（全部移除）
 
-> 保留 4 个 Provider：openai、ollama、openrouter、litellm（+ ollama-cloud 作为 ollama 的云变体）。
-> 其余 78+ Provider 的注册和描述符已移除，但底层源码文件保留（作为死代码，编译正常）。
-> `models.json` 已清空（原 2.1MB/64 provider/4120 模型 → `{}`），所有模型通过运行时发现和用户配置提供。
+> 所有内置 Provider 已移除（原 83 个 → 0 个）。模型完全通过用户配置提供。
+> `models.json` 已清空（原 2.1MB/64 provider/4120 模型 → `{}`）。
+> 用户自定义 Provider（`mouser-llm`、`xfyun`）通过 `~/.bocomcoder/agent/models.json` 加载，使用 `api: "openai-completions"` 协议。
 
 ### 设计决策
-- **保留源码文件**：`packages/ai/src/providers/` 和 `packages/ai/src/registry/` 中的 78+ 个已移除 Provider 的源码文件未删除，仅从注册表和描述符中移除。这样 `stream.ts`、`mapOptionsForApi` 等函数中的类型引用仍可编译，且未来恢复 Provider 只需重新注册。
-- **编译时完整性检查**：`registry.ts` 中的 `_CheckRegistryComplete` 类型检查确保 `KnownProvider`（来自 `pi-catalog`）与 `PROVIDER_REGISTRY` 一致。通过同步精简 `descriptors.ts` 和 `registry.ts`，此检查自然通过。
-- **OAuth 类型自动派生**：`OAuthProviderUnion` 从 `PROVIDER_REGISTRY` 派生，精简后自动只包含有 `login` 方法的 4 个 Provider。
-- **models.json 清空**：编译时静态模型目录已清空为 `{}`，`GeneratedProvider` 类型放宽为 `string` 以兼容死代码。运行时模型来源：① Ollama/OpenRouter 等的动态发现 ② 用户 `~/.bocomcoder/agent/models.json` 自定义配置。
+- **保留源码文件**：`packages/ai/src/providers/` 和 `packages/ai/src/registry/` 中的 78+ 个已移除 Provider 的源码文件未删除，仅从注册表和描述符中移除。这样 `stream.ts`、`mapOptionsForApi`、`register-builtins.ts` 等函数中的类型引用仍可编译，且未来恢复 Provider 只需重新注册。
+- **`KnownProvider` 放宽为 `string`**：`CATALOG_PROVIDERS` 为空数组，`(typeof CATALOG_PROVIDERS)[number]["id"]` = `string`，使所有 provider ID 类型兼容。
+- **`OAuthProvider` 放宽为 `string`**：`OAuthProviderUnion` 从空 `PROVIDER_REGISTRY` 派生，`OAuthProvider` 已从 `OAuthProviderUnion` 改为 `string`。
+- **编译时完整性检查移除**：`registry.ts` 中的 `_CheckRegistryComplete` 已移除（`KnownProvider` = `string` 后 `Exclude<string, never>` = `string` ≠ `never`，检查无意义）。
+- **models.json 清空**：编译时静态模型目录已清空为 `{}`，`GeneratedProvider` 类型放宽为 `string` 以兼容死代码。运行时模型来源：用户 `~/.bocomcoder/agent/models.json` 自定义配置。
+- **自定义 Provider 兼容性**：`mouser-llm` 和 `xfyun` 使用 `api: "openai-completions"`，通过 `stream.ts` 的 `case "openai-completions":` 分支和 `register-builtins.ts` 的 `streamOpenAICompletions` 惰性加载器处理。这些代码路径完整保留。
+
 ### 修改的文件
 
 | 文件 | 改动 | 说明 |
 |------|------|------|
-| `packages/catalog/src/provider-models/descriptors.ts` | `CATALOG_PROVIDERS` 从 83 项精简为 5 项 | 只保留 ollama、ollama-cloud、openai、openrouter、litellm 的描述符和导入 |
-| `packages/ai/src/registry/registry.ts` | `ALL` 数组从 83 项精简为 5 项 | 只导入和注册 5 个 Provider，`_CheckRegistryComplete` 自然通过 |
+| `packages/catalog/src/provider-models/descriptors.ts` | `CATALOG_PROVIDERS` 清空为 `[]`，`KnownProvider` = `string` | 所有内置 Provider 描述符移除，类型放宽 |
+| `packages/ai/src/registry/registry.ts` | `ALL` 数组清空为 `[]`，移除 `_CheckRegistryComplete` | 所有内置 Provider 注册移除，编译时检查不再适用 |
+| `packages/ai/src/registry/oauth/types.ts` | `OAuthProvider` 从 `OAuthProviderUnion` 改为 `string` | 无内置 Provider 后联合类型为 `never`，需放宽 |
 | `packages/ai/src/registry/oauth/index.ts` | 移除 perplexity/github-copilot/google-gemini-cli/google-antigravity/alibaba-coding-plan 特殊处理 | `getOAuthApiKey` 简化为直接返回 `creds.access` |
 | `packages/ai/src/registry/vllm.ts` | `PROVIDER_ID` 类型从 `OAuthProvider` 改为 `string` | 避免 `OAuthProvider` 联合类型缩小后的类型错误 |
 | `packages/catalog/scripts/generate-models.ts` | `fetchAntigravityModels` 和 `fetchCodexDiscoveryModels` 改为空 stub | 返回 `never[]`，避免引用已移除 Provider 的类型 |
 | `packages/catalog/test/*.test.ts` | 删除 15 个引用已移除 Provider 的测试文件 | aiand、alibaba-token-plan、amazon-bedrock-openai、azure、coreweave、descriptors、gmi-cloud、issue-2105-repro、issue-830-repro、meta、novita、sakana、siliconflow、zenmux、zhipu |
 | `packages/ai/test/*.test.ts` | 删除 6 个引用已移除 Provider 的测试文件 | alibaba-endpoint-selection、auth-storage-broker-no-sentinel、auth-storage-codex-selection、github-copilot-login、google-gemini-cli-alignment、provider-registry |
-| `packages/catalog/src/models.json` | 清空为 `{}` | 原 2.1MB/64 provider/4120 模型全部移除，运行时通过动态发现和用户配置提供 |
+| `packages/catalog/src/models.json` | 清空为 `{}` | 原 2.1MB/64 provider/4120 模型全部移除 |
 | `packages/catalog/src/models.ts` | `GeneratedProvider` 类型从 `keyof typeof MODELS` 改为 `string` | 兼容死代码中对已移除 Provider 的调用 |
 | `packages/catalog/test/*.test.ts` | 删除 6 个引用已清空 models.json 的测试文件 | models-lazy-provider-cache、issue-3067-repro、issue-772-repro、minimax-bundled-catalog、umans-provider、zai-bundled-catalog |
 ### 启动联网请求禁用
@@ -212,9 +216,10 @@ git diff HEAD..upstream/main -- packages/natives/ packages/coding-agent/scripts/
 | `.gitignore` | 合并上游新增项，保留 BocomCoder 专属忽略项 |
 | `packages/natives/native/embedded-addon.js` | 如果上游更新了此文件，评估是否需要重新适配 win32-x64 嵌入 |
 | `packages/coding-agent/src/utils/mupdf-wasm-embed.ts` | 如果上游更新了此文件，评估是否需要重新适配本地构建 |
-| `packages/ai/src/registry/registry.ts` | 保留精简后的 5 项注册，合并上游新增项时需同步 descriptors.ts |
+| `packages/ai/src/registry/registry.ts` | 保留空 `ALL` 数组，移除 `_CheckRegistryComplete`；如需恢复 Provider，添加注册并同步 descriptors.ts |
+| `packages/ai/src/registry/oauth/types.ts` | 保留 `OAuthProvider = string`；如需恢复内置 OAuth Provider，改回 `OAuthProviderUnion` |
 | `packages/ai/src/registry/oauth/index.ts` | 保留简化后的 `getOAuthApiKey`，合并上游新增特殊处理分支 |
-| `packages/catalog/src/provider-models/descriptors.ts` | 保留精简后的 5 项描述符，合并上游新增项时需同步 registry.ts |
+| `packages/catalog/src/provider-models/descriptors.ts` | 保留空 `CATALOG_PROVIDERS`；如需恢复 Provider，添加描述符并同步 registry.ts |
 | `packages/catalog/scripts/generate-models.ts` | 保留 stub 函数，合并上游新增动态发现时需恢复 |
 | `packages/coding-agent/src/config/settings-schema.ts` | 保留 `startup.checkUpdate: false` 和 `marketplace.autoUpdate: "off"` 默认值，合并上游新增设置项 |
 
@@ -250,3 +255,4 @@ git diff HEAD..upstream/main -- packages/natives/ packages/coding-agent/scripts/
 | v0.83.0 | v0.83.0 | 初始构建适配，embedded-addon/mupdf-wasm-embed 本地化，路径分隔符修复 |
 | v0.83.0-bc1 | v0.83.0 | Provider 精简：83→5（openai/ollama/openrouter/litellm+ollama-cloud），OAuth 简化，测试清理 |
 | v0.83.0-bc2 | v0.83.0 | 禁用启动版本检查（`startup.checkUpdate: false`）和插件市场自动更新（`marketplace.autoUpdate: "off"`），自编译无需联网检查更新 |
+| v0.83.0-bc3 | v0.83.0 | Provider 全部移除：5→0，`KnownProvider`/`OAuthProvider` 放宽为 `string`，`_CheckRegistryComplete` 移除，自定义 Provider（mouser-llm/xfyun）通过 `api: "openai-completions"` 独立运行 |

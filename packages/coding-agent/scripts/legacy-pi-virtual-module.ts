@@ -150,8 +150,11 @@ export async function collectBundledPiEntries(): Promise<BundledPiEntry[]> {
 				// an import worked from source and failed inside a binary.
 				const glob = new Bun.Glob(`**/*${pattern.sourceSuffix}`);
 				const matches: string[] = [];
-				for await (const rawMatch of glob.scan({ cwd: sourceDir, onlyFiles: true })) {
-					matches.push(rawMatch.split("\\").join("/"));
+				for await (const match of glob.scan({ cwd: sourceDir, onlyFiles: true })) {
+					// Bun.Glob yields host separators; the export keys and generated
+					// identifiers below are `/`-shaped. Same normalization as
+					// `generate-docs-index.ts`.
+					matches.push(match.split(path.sep).join("/"));
 				}
 				matches.sort();
 				for (const match of matches) {

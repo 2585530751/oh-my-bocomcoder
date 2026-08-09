@@ -76,6 +76,13 @@ scratch/
 | `packages/catalog/src/models.json` | 清空为 `{}` | 原 2.1MB/64 provider/4120 模型全部移除，运行时通过动态发现和用户配置提供 |
 | `packages/catalog/src/models.ts` | `GeneratedProvider` 类型从 `keyof typeof MODELS` 改为 `string` | 兼容死代码中对已移除 Provider 的调用 |
 | `packages/catalog/test/*.test.ts` | 删除 6 个引用已清空 models.json 的测试文件 | models-lazy-provider-cache、issue-3067-repro、issue-772-repro、minimax-bundled-catalog、umans-provider、zai-bundled-catalog |
+### 启动联网请求禁用
+
+| 文件 | 改动 | 说明 |
+|------|------|------|
+| `packages/coding-agent/src/config/settings-schema.ts` | `startup.checkUpdate` 默认值 `true` → `false` | 自编译无需联网检查版本更新 |
+| `packages/coding-agent/src/config/settings-schema.ts` | `marketplace.autoUpdate` 默认值 `"notify"` → `"off"` | 自编译无需联网检查插件市场更新 |
+
 ### 未修改的文件（死代码保留）
 
 以下文件仍包含已移除 Provider 的代码，但编译正常，运行时不会被调用：
@@ -209,6 +216,7 @@ git diff HEAD..upstream/main -- packages/natives/ packages/coding-agent/scripts/
 | `packages/ai/src/registry/oauth/index.ts` | 保留简化后的 `getOAuthApiKey`，合并上游新增特殊处理分支 |
 | `packages/catalog/src/provider-models/descriptors.ts` | 保留精简后的 5 项描述符，合并上游新增项时需同步 registry.ts |
 | `packages/catalog/scripts/generate-models.ts` | 保留 stub 函数，合并上游新增动态发现时需恢复 |
+| `packages/coding-agent/src/config/settings-schema.ts` | 保留 `startup.checkUpdate: false` 和 `marketplace.autoUpdate: "off"` 默认值，合并上游新增设置项 |
 
 ### 3. 合并后必做的检查
 
@@ -241,3 +249,4 @@ git diff HEAD..upstream/main -- packages/natives/ packages/coding-agent/scripts/
 |------|----------|----------|
 | v0.83.0 | v0.83.0 | 初始构建适配，embedded-addon/mupdf-wasm-embed 本地化，路径分隔符修复 |
 | v0.83.0-bc1 | v0.83.0 | Provider 精简：83→5（openai/ollama/openrouter/litellm+ollama-cloud），OAuth 简化，测试清理 |
+| v0.83.0-bc2 | v0.83.0 | 禁用启动版本检查（`startup.checkUpdate: false`）和插件市场自动更新（`marketplace.autoUpdate: "off"`），自编译无需联网检查更新 |

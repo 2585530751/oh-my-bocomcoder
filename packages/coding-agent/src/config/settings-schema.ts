@@ -1813,7 +1813,7 @@ export const SETTINGS_SCHEMA = {
 
 	"startup.checkUpdate": {
 		type: "boolean",
-		default: true,
+		default: false,
 		ui: {
 			tab: "interaction",
 			group: "Startup & Updates",
@@ -1825,7 +1825,7 @@ export const SETTINGS_SCHEMA = {
 	"marketplace.autoUpdate": {
 		type: "enum",
 		values: ["off", "notify", "auto"] as const,
-		default: "notify",
+		default: "off",
 		ui: {
 			tab: "interaction",
 			group: "Startup & Updates",

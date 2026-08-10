@@ -256,3 +256,4 @@ git diff HEAD..upstream/main -- packages/natives/ packages/coding-agent/scripts/
 | v0.83.0-bc1 | v0.83.0 | Provider 精简：83→5（openai/ollama/openrouter/litellm+ollama-cloud），OAuth 简化，测试清理 |
 | v0.83.0-bc2 | v0.83.0 | 禁用启动版本检查（`startup.checkUpdate: false`）和插件市场自动更新（`marketplace.autoUpdate: "off"`），自编译无需联网检查更新 |
 | v0.83.0-bc3 | v0.83.0 | Provider 全部移除：5→0，`KnownProvider`/`OAuthProvider` 放宽为 `string`，`_CheckRegistryComplete` 移除，自定义 Provider（mouser-llm/xfyun）通过 `api: "openai-completions"` 独立运行 |
+| v0.83.0-bc4 | v0.83.0+ | 上游合并 200+ commits，models.json 冲突取上游后重新清空，vllm.ts 采纳 createApiKeyLogin 重构，legacy-pi-virtual-module.ts 采纳 path.sep 规范化 |

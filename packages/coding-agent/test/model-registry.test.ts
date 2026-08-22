@@ -1636,13 +1636,31 @@ describe("ModelRegistry", () => {
 			expect(registry.getDiscoverableProviders()).not.toContain("ollama");
 		});
 
-		test("refresh skips discovery probes for disabled local providers", async () => {
-			await Settings.init({
-				inMemory: true,
-				overrides: {
-					disabledProviders: ["llama.cpp", "lm-studio", "ollama"],
+		test("custom OpenAI-compatible provider remains discoverable and refreshable", async () => {
+			writeRawModelsJson({
+				"mouser-llm": {
+					baseUrl: "https://mouser.example/v1",
+					apiKey: "MOUSER_KEY",
+					api: "openai-completions",
+					discovery: { type: "openai-models-list" },
+					models: [{ id: "DeepSeek-V4-Flash" }],
 				},
 			});
+			const fetchMock = mockOpenAiCompatibleModels(
+				"https://mouser.example/v1/models",
+				["DeepSeek-V4-Flash", "GLM-5.1"],
+			);
+			const registry = new ModelRegistry(authStorage, modelsJsonPath, { fetch: fetchMock });
+
+			expect(registry.find("mouser-llm", "DeepSeek-V4-Flash")?.api).toBe("openai-completions");
+			await registry.refreshProvider("mouser-llm", "online");
+
+			const discovered = registry.find("mouser-llm", "GLM-5.1");
+			expect(discovered?.api).toBe("openai-completions");
+			expect(discovered?.baseUrl).toBe("https://mouser.example/v1");
+		});
+
+		test("does not probe implicit local providers", async () => {
 			const requestedUrls: string[] = [];
 			const fetchMock: FetchImpl = input => {
 				requestedUrls.push(String(input));
@@ -1652,10 +1670,10 @@ describe("ModelRegistry", () => {
 			const registry = new ModelRegistry(authStorage, modelsJsonPath, { fetch: fetchMock });
 			await registry.refresh("online");
 
-			const disabledProbeUrls = requestedUrls.filter(
+			const implicitLocalProbeUrls = requestedUrls.filter(
 				url => url.includes("127.0.0.1:11434") || url.includes("127.0.0.1:8080") || url.includes("127.0.0.1:1234"),
 			);
-			expect(disabledProbeUrls).toEqual([]);
+			expect(implicitLocalProbeUrls).toEqual([]);
 		});
 	});
 	describe("bundled Anthropic catalog availability", () => {

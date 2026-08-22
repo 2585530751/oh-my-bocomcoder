@@ -64,6 +64,7 @@ scratch/
 - **编译时完整性检查移除**：`registry.ts` 中的 `_CheckRegistryComplete` 已移除（`KnownProvider` = `string` 后 `Exclude<string, never>` = `string` ≠ `never`，检查无意义）。
 - **models.json 清空**：编译时静态模型目录已清空为 `{}`，`GeneratedProvider` 类型放宽为 `string` 以兼容死代码。运行时模型来源：用户 `~/.bocomcoder/agent/models.json` 自定义配置。
 - **自定义 Provider 兼容性**：`mouser-llm` 和 `xfyun` 使用 `api: "openai-completions"`，通过 `stream.ts` 的 `case "openai-completions":` 分支和 `register-builtins.ts` 的 `streamOpenAICompletions` 惰性加载器处理。这些代码路径完整保留。
+- **不再隐式探测本地服务**：`ModelRegistry` 不会再自动添加 `ollama`、`llama.cpp` 或 `lm-studio` 的本地 discovery 配置，因此启动及模型刷新均不会访问 `127.0.0.1:11434`、`:8080` 或 `:1234`。需要本地服务时，必须在用户 `models.json` 中显式配置 Provider。
 
 ### 修改的文件
 
@@ -80,6 +81,7 @@ scratch/
 | `packages/catalog/src/models.json` | 清空为 `{}` | 原 2.1MB/64 provider/4120 模型全部移除 |
 | `packages/catalog/src/models.ts` | `GeneratedProvider` 类型从 `keyof typeof MODELS` 改为 `string` | 兼容死代码中对已移除 Provider 的调用 |
 | `packages/catalog/test/*.test.ts` | 删除 6 个引用已清空 models.json 的测试文件 | models-lazy-provider-cache、issue-3067-repro、issue-772-repro、minimax-bundled-catalog、umans-provider、zai-bundled-catalog |
+| `packages/coding-agent/src/config/model-registry.ts` | 移除隐式 Ollama / llama.cpp / LM Studio discovery | 未配置 Provider 时不再探测本地端口；显式 `models.json` discovery 保持不变 |
 ### 启动联网请求禁用
 
 | 文件 | 改动 | 说明 |
@@ -258,3 +260,4 @@ git diff HEAD..upstream/main -- packages/natives/ packages/coding-agent/scripts/
 | v0.83.0-bc3 | v0.83.0 | Provider 全部移除：5→0，`KnownProvider`/`OAuthProvider` 放宽为 `string`，`_CheckRegistryComplete` 移除，自定义 Provider（mouser-llm/xfyun）通过 `api: "openai-completions"` 独立运行 |
 | v0.83.0-bc4 | v0.83.0+ | 上游合并 200+ commits，models.json 冲突取上游后重新清空，vllm.ts 采纳 createApiKeyLogin 重构，legacy-pi-virtual-module.ts 采纳 path.sep 规范化 |
 | v0.83.0-bc5 | v0.83.0+ | 本次同步：upstream/main 无新 commits（HEAD 已在 merge base 上），所有 BocomCoder 定制完好（providers 清空、update check 禁用、models.json 清空） |
+| v0.83.0-bc6 | v0.83.0+ | 移除 ModelRegistry 对 Ollama、llama.cpp、LM Studio 的隐式本地 discovery；仅显式配置的自定义 Provider 可触发模型发现 |

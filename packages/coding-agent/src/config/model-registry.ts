@@ -61,7 +61,6 @@ import {
 	type DiscoveryProviderConfig,
 	discoverLlamaCppModelRuntimeMetadata,
 	discoverModelsByProviderType,
-	getImplicitOllamaBaseUrl,
 	getOllamaContextLengthOverride,
 	normalizeLiteLLMDiscoveryBaseUrl,
 } from "./model-discovery";
@@ -119,7 +118,6 @@ interface CustomModelsResult {
 	modelOverrides?: Map<string, Map<string, ModelOverride>>;
 	keylessProviders?: Set<string>;
 	discoverableProviders?: DiscoveryProviderConfig[];
-	configuredProviders?: Set<string>;
 	error?: ConfigError;
 	found: boolean;
 }
@@ -462,7 +460,6 @@ export class ModelRegistry {
 			modelOverrides = new Map(),
 			keylessProviders = new Set(),
 			discoverableProviders = [],
-			configuredProviders = new Set(),
 			error: configError,
 		} = this.#loadCustomModels();
 		this.#configError = configError;
@@ -472,7 +469,6 @@ export class ModelRegistry {
 		this.#providerOverrides = overrides;
 		this.#modelOverrides = modelOverrides;
 
-		this.#addImplicitDiscoverableProviders(configuredProviders);
 		const cachedStandardResult = this.#loadCachedStandardProviderModels();
 		this.#cachedStandardModels = this.#applyHardcodedModelPolicies(cachedStandardResult.models);
 		this.#cachedDiscoverableModels = this.#applyHardcodedModelPolicies(this.#loadCachedDiscoverableModels());
@@ -849,43 +845,6 @@ export class ModelRegistry {
 		});
 	}
 
-	#addImplicitDiscoverableProviders(configuredProviders: Set<string>): void {
-		const disabledProviders = getDisabledProviderIdsFromSettings();
-		if (!configuredProviders.has("ollama") && !disabledProviders.has("ollama")) {
-			this.#discoverableProviders.push({
-				provider: "ollama",
-				api: "openai-responses",
-				baseUrl: getImplicitOllamaBaseUrl(),
-				discovery: { type: "ollama" },
-				optional: true,
-			});
-			this.#keylessProviders.add("ollama");
-		}
-		if (!configuredProviders.has("llama.cpp") && !disabledProviders.has("llama.cpp")) {
-			this.#discoverableProviders.push({
-				provider: "llama.cpp",
-				api: "openai-responses",
-				baseUrl: Bun.env.LLAMA_CPP_BASE_URL || "http://127.0.0.1:8080",
-				discovery: { type: "llama.cpp" },
-				optional: true,
-			});
-			// Only mark as keyless if no API key is configured
-			if (!this.authStorage.hasAuth("llama.cpp")) {
-				this.#keylessProviders.add("llama.cpp");
-			}
-		}
-		if (!configuredProviders.has("lm-studio") && !disabledProviders.has("lm-studio")) {
-			this.#discoverableProviders.push({
-				provider: "lm-studio",
-				api: "openai-completions",
-				baseUrl: Bun.env.LM_STUDIO_BASE_URL || "http://127.0.0.1:1234/v1",
-				discovery: { type: "lm-studio" },
-				optional: true,
-			});
-			this.#keylessProviders.add("lm-studio");
-		}
-	}
-
 	#loadCustomModels(): CustomModelsResult {
 		// Gateway mode: serve bundled + broker-discovered catalog metadata only.
 		// Local models.yml provider overrides (baseUrl/apiKey/headers/transport),
@@ -901,7 +860,6 @@ export class ModelRegistry {
 				modelOverrides: new Map(),
 				keylessProviders: new Set(),
 				discoverableProviders: [],
-				configuredProviders: new Set(),
 				found: false,
 			};
 		}
@@ -914,7 +872,6 @@ export class ModelRegistry {
 				modelOverrides: new Map(),
 				keylessProviders: new Set(),
 				discoverableProviders: [],
-				configuredProviders: new Set(),
 				error,
 				found: true,
 			};
@@ -925,7 +882,6 @@ export class ModelRegistry {
 				modelOverrides: new Map(),
 				keylessProviders: new Set(),
 				discoverableProviders: [],
-				configuredProviders: new Set(),
 				found: false,
 			};
 		}
@@ -935,7 +891,6 @@ export class ModelRegistry {
 		const keylessProviders = new Set<string>();
 		const discoverableProviders: DiscoveryProviderConfig[] = [];
 		const providerEntries = Object.entries(value.providers ?? {});
-		const configuredProviders = new Set(Object.keys(value.providers ?? {}));
 		for (const [providerName, providerConfig] of providerEntries) {
 			const resolvedProviderHeaders = resolveConfigHeaders(providerConfig.headers);
 			// Always set overrides when baseUrl/headers/apiKey/authHeader/compat/disableStrictTools/transport are present
@@ -1013,7 +968,6 @@ export class ModelRegistry {
 			modelOverrides: allModelOverrides,
 			keylessProviders,
 			discoverableProviders,
-			configuredProviders,
 			found: true,
 		};
 	}

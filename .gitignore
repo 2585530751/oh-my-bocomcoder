@@ -94,6 +94,9 @@ packages/coding-agent/bench/boot-baseline.json
 # Bazel full output (symlink dir)
 bazel-oh-my-pi/
 
+# Local user notes (not tracked)
+编译.md
+
 # Local test/scratch scripts
 hello-test*.ts
 hello-test*.exe

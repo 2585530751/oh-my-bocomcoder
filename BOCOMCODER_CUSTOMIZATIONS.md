@@ -208,7 +208,7 @@ docker run --rm -it -v "$PWD":/work oh-my-pi/pi:dev cli
 ```bash
 git fetch upstream
 git log HEAD..upstream/main --oneline  # 查看新提交数量
-git diff HEAD..upstream/main -- packages/natives/ packages/coding-agent/scripts/ packages/coding-agent/src/utils/mupdf-wasm-embed.ts
+git diff HEAD..upstream/main -- packages/ai/ packages/catalog/ packages/coding-agent/ packages/natives/
 ```
 
 ### 2. 合并冲突解决策略
@@ -227,16 +227,11 @@ git diff HEAD..upstream/main -- packages/natives/ packages/coding-agent/scripts/
 
 ### 3. 合并后必做的检查
 
-1. **检查 embedded-addon 是否需要更新**：
+1. **检查原生资源与构建脚本是否需要更新**：
    ```bash
-   git diff HEAD~1..HEAD -- packages/natives/native/embedded-addon.js
+   git diff HEAD~1..HEAD -- packages/natives/ packages/coding-agent/scripts/
    ```
-   如果上游改变了嵌入方式，需要重新适配。
-
-2. **检查 mupdf-wasm 是否需要更新**：
-   ```bash
-   git diff HEAD~1..HEAD -- packages/coding-agent/src/utils/mupdf-wasm-embed.ts
-   ```
+   上游当前已将 PDF 能力迁移到 `pdf-inspector`；不要按旧的 `mupdf-wasm-embed.ts` 路径恢复已删除文件。
 
 3. **编译验证**：
    ```bash
@@ -261,3 +256,4 @@ git diff HEAD..upstream/main -- packages/natives/ packages/coding-agent/scripts/
 | v0.83.0-bc4 | v0.83.0+ | 上游合并 200+ commits，models.json 冲突取上游后重新清空，vllm.ts 采纳 createApiKeyLogin 重构，legacy-pi-virtual-module.ts 采纳 path.sep 规范化 |
 | v0.83.0-bc5 | v0.83.0+ | 本次同步：upstream/main 无新 commits（HEAD 已在 merge base 上），所有 BocomCoder 定制完好（providers 清空、update check 禁用、models.json 清空） |
 | v0.83.0-bc6 | v0.83.0+ | 移除 ModelRegistry 对 Ollama、llama.cpp、LM Studio 的隐式本地 discovery；仅显式配置的自定义 Provider 可触发模型发现 |
+| v18.0.11-sync-20260830 | v0.84.4 (`cdb9c4d985bc`) | 合并上游 catalog/model registry 重构及新增模型能力；保留空 Provider registry、空 descriptors/models.json、无隐式本地 discovery，并按上游删除已替代的 MuPDF 嵌入资源 |

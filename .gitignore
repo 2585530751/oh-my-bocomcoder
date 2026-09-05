@@ -113,3 +113,6 @@ packages/coding-agent/scripts/build-win32.ts
 packages/coding-agent/scripts/bundle-only.ts
 packages/coding-agent/scripts/diag-build.ts
 packages/coding-agent/scripts/diag-entries.ts
+
+.parity/
+

@@ -2,7 +2,9 @@
 // High-level API
 // ============================================================================
 
+import { authPolicyFor } from "@oh-my-pi/pi-catalog/compat/auth";
 import * as AIError from "../../error";
+import { jwtExpiryMs, NEVER_EXPIRES } from "../engine/common";
 import { getProviderDefinition, PROVIDER_REGISTRY } from "../registry";
 import type {
 	OAuthCredentials,
@@ -84,8 +86,20 @@ export async function refreshOAuthToken(
 	// don't expire) return the credentials unchanged.
 	return def.refreshToken ? def.refreshToken(credentials, signal) : credentials;
 }
-// BocomCoder: perplexity JWT helper removed (provider stripped)
+const JWT_EXPIRY_SKEW_MS = 5 * 60_000;
+export function normalizeOAuthCredentialExpiry<T extends OAuthCredentials>(provider: string, credentials: T): T {
+	if (authPolicyFor(provider)?.expiry !== "jwt-or-never") return credentials;
 
+	// Trust a JWT expiry claim when present; otherwise treat providers with
+	// non-expiring sessions as such rather than honoring stale stored expiry
+	// timestamps written by older login implementations.
+	const normalizedExpires =
+		credentials.expires > 0 && credentials.expires < 10_000_000_000
+			? credentials.expires * 1000
+			: credentials.expires;
+	const expires = jwtExpiryMs(credentials.access, JWT_EXPIRY_SKEW_MS) ?? Math.max(normalizedExpires, NEVER_EXPIRES);
+	return expires === credentials.expires ? credentials : ({ ...credentials, expires } as T);
+}
 /**
  * Build API-key bytes for a provider from an already-fresh OAuth credential.
  *
@@ -102,13 +116,41 @@ export async function getOAuthApiKey(
 	provider: OAuthProvider,
 	credentials: Record<string, OAuthCredentials>,
 ): Promise<{ newCredentials: OAuthCredentials; apiKey: string } | null> {
-	const creds = credentials[provider];
+	let creds = credentials[provider];
 	if (!creds) {
 		return null;
 	}
-	// BocomCoder: perplexity/github-copilot/google-gemini-cli/google-antigravity/alibaba-coding-plan
-	// special cases removed (providers stripped). All remaining providers use simple access tokens.
-	const apiKey = creds.access;
+
+	const policy = authPolicyFor(provider);
+	creds = normalizeOAuthCredentialExpiry(provider, creds);
+	// Refresh is the sole responsibility of `AuthStorage` (which calls
+	// `refreshOAuthToken` directly with broker-aware single-flighting). If we
+	// reach here with an expired credential, the outer pipeline failed to
+	// refresh before this call OR the refresh slot is the broker sentinel —
+	// either way, posting the credential to a provider endpoint would only
+	// trigger a `__remote__`-against-real-provider failure that gets classified
+	// as `invalid_grant` and disables the row. Refuse loudly instead.
+	if (Date.now() >= creds.expires) {
+		throw new AIError.OAuthError(
+			`OAuth credential for ${provider} is expired and must be refreshed via AuthStorage before getOAuthApiKey is called`,
+			{ kind: "validation", provider },
+		);
+	}
+	// Providers declaring `api-key-format "structured"` need request-time
+	// credential metadata, so the API key is the JSON-encoded credential.
+	const apiKey =
+		policy?.apiKeyFormat === "structured"
+			? JSON.stringify({
+					apiEndpoint: creds.apiEndpoint,
+					token: creds.access,
+					enterpriseUrl: creds.enterpriseUrl,
+					projectId: creds.projectId,
+					refreshToken: creds.refresh,
+					expiresAt: creds.expires,
+					email: creds.email,
+					accountId: creds.accountId,
+				})
+			: creds.access;
 	return { newCredentials: creds, apiKey };
 }
 

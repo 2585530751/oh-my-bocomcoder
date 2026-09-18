@@ -1,51 +1,28 @@
 /**
- * The provider catalog table: one entry per chat-model provider, carrying the
- * catalog half of what used to live in `@oh-my-pi/pi-ai`'s registry definitions
- * (default model, runtime model-manager factory, discovery wiring). The auth
- * half (env keys, OAuth login/refresh) stays in the pi-ai registry, which
- * type-checks itself against `KnownProvider` from this table.
+ * Runtime model-manager factories for catalog providers. Everything else a
+ * provider entry carries — default model, env keys, discovery wiring, seed
+ * rows — is authored in `src/compat/rules/providers/<id>.kdl` and read from
+ * the compiled entry (`src/compat/providers.ts`); this table holds only the
+ * code half.
  *
  * BocomCoder: All built-in providers removed. Models come exclusively from
  * user config (~/.bocomcoder/agent/models.json) and runtime discovery.
  */
-import type { ModelManagerConfig, ProviderCatalogEntry, ProviderDescriptor } from "./descriptor-types";
+import type { KnownProvider } from "../compat/provider-ids";
+import type { ProviderDescriptor } from "./descriptor-types";
 
-export const CATALOG_PROVIDERS: readonly ProviderCatalogEntry[] = [];
-
-/** Chat-model providers — every entry in the catalog table. */
-export type KnownProvider = (typeof CATALOG_PROVIDERS)[number]["id"];
+export type { KnownProvider } from "../compat/provider-ids";
 
 /**
- * Runtime model-discovery descriptors: every catalog provider that exposes a
- * standard model-manager factory. Special-managed providers
- * (`google-antigravity`/`google-gemini-cli`/`openai-codex`) are built bespoke in
- * the coding-agent runtime and are excluded here.
+ * Runtime model-discovery descriptors: every catalog provider with a
+ * model-manager factory, paired with its compiled KDL entry.
+ *
+ * BocomCoder: kept empty — no built-in provider discovery. Models come
+ * exclusively from user config and runtime discovery.
  */
-const CATALOG_ENTRY_LIST: readonly ProviderCatalogEntry[] = CATALOG_PROVIDERS;
+export const PROVIDER_DESCRIPTORS: readonly ProviderDescriptor[] = [];
 
-export const PROVIDER_DESCRIPTORS: readonly ProviderDescriptor[] = CATALOG_ENTRY_LIST.flatMap(provider => {
-	if (!provider.createModelManagerOptions || provider.specialModelManager) {
-		return [];
-	}
-	return [
-		{
-			providerId: provider.id,
-			defaultModel: provider.defaultModel,
-			createModelManagerOptions: provider.createModelManagerOptions,
-			allowUnauthenticated: provider.allowUnauthenticated,
-			dynamicModelsAuthoritative: provider.dynamicModelsAuthoritative,
-			catalogDiscovery: provider.catalogDiscovery
-				? { ...provider.catalogDiscovery, envVars: provider.catalogDiscovery.envVars ?? provider.envVars ?? [] }
-				: undefined,
-		},
-	];
-});
-
-/** Default model IDs for all known providers, derived from the catalog table. */
-export const DEFAULT_MODEL_PER_PROVIDER: Record<KnownProvider, string> = Object.fromEntries(
-	CATALOG_PROVIDERS.map(provider => [provider.id, provider.defaultModel] as [string, string]),
-) as Record<KnownProvider, string>;
-
-export function getCatalogProviderEntry(id: string): ProviderCatalogEntry | undefined {
-	return CATALOG_PROVIDERS.find(provider => provider.id === id);
-}
+/** Default model IDs for all known providers, from their KDL entries. */
+export const DEFAULT_MODEL_PER_PROVIDER: Readonly<Record<KnownProvider, string>> = Object.freeze(
+	{},
+) as Readonly<Record<KnownProvider, string>>;

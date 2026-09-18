@@ -28,7 +28,10 @@ function getProviderModels(provider: string): Map<string, Model<Api>> | undefine
 	if (!Object.hasOwn(MODELS, provider)) return undefined;
 
 	const providerModels = new Map<string, Model<Api>>();
-	const rawModels = MODELS[provider as keyof typeof MODELS];
+	// BocomCoder: models.json cleared to `{}`, so keyed access is typed via an
+	// explicit record (never would otherwise fail the `for...in` below).
+	const rawModels = MODELS[provider as keyof typeof MODELS] as Record<string, Model<Api>> | undefined;
+	if (!rawModels) return undefined;
 	for (const id in rawModels) {
 		// models.json rows are complete Models emitted by generate-models.ts;
 		// consuming them verbatim keeps startup allocation-free.

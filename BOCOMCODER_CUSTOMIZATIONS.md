@@ -257,3 +257,21 @@ git diff HEAD..upstream/main -- packages/ai/ packages/catalog/ packages/coding-a
 | v0.83.0-bc5 | v0.83.0+ | 本次同步：upstream/main 无新 commits（HEAD 已在 merge base 上），所有 BocomCoder 定制完好（providers 清空、update check 禁用、models.json 清空） |
 | v0.83.0-bc6 | v0.83.0+ | 移除 ModelRegistry 对 Ollama、llama.cpp、LM Studio 的隐式本地 discovery；仅显式配置的自定义 Provider 可触发模型发现 |
 | v18.0.11-sync-20260830 | v0.84.4 (`cdb9c4d985bc`) | 合并上游 catalog/model registry 重构及新增模型能力；保留空 Provider registry、空 descriptors/models.json、无隐式本地 discovery，并按上游删除已替代的 MuPDF 嵌入资源 |
+| v18.2.6-sync-20260919 | v18.2.6 | 合并上游 1633 commits（provider 元数据 KDL 规则化重构）；descriptors.ts 适配上游 KDL 架构但保持空导出，models.json 保持 `{}`（上游 10.9MB），models.ts 修复 `for...in` over `never`，qianfan.kdl/auth 保持删除，11 个测试文件保持删除；全部 17 个包 `tsgo` 类型检查通过 |
+
+### 本次合并（v18.1.21 → v18.2.6）的适配明细
+
+上游把 provider 元数据全面迁移到 **KDL 规则驱动**（`src/compat/rules/providers/*.kdl` + `rules/auth/*.kdl`，编译产物 `src/compat/providers.ts`、`src/compat/provider-ids.ts`）。`descriptors.ts` 不再维护 `CATALOG_PROVIDERS` 数组，改为从 `providerEntries()`（KDL 编译条目）构建。适配如下：
+
+| 文件 | 合并结果 |
+|------|----------|
+| `packages/catalog/src/provider-models/descriptors.ts` | 采用上游 KDL 架构（`KnownProvider` 从 `../compat/provider-ids` 导出），但 `PROVIDER_DESCRIPTORS` 保持 `[]`、`DEFAULT_MODEL_PER_PROVIDER` 保持 `{}`（BocomCoder 清空定制） |
+| `packages/catalog/src/models.json` | 冲突：本地 `{}` vs 上游 10.9MB，保持本地 `{}` |
+| `packages/catalog/src/models.ts` | 上游新增 `getProviderModels()` 的 `for...in` 遍历；因 `MODELS = {}` 导致 RHS 为 `never`（TS2407），已改为显式 `Record<string, Model<Api>> | undefined` 断言 + 判空 |
+| `packages/catalog/src/compat/rules/providers/qianfan.kdl` + `rules/auth/qianfan.kdl` | 保持删除（千帆已 strip） |
+| 11 个测试文件（auth-storage-codex-selection、provider-registry、alibaba-token-plan、amazon-bedrock-openai、gmi-cloud-provider、meta-provider、sakana-provider、siliconflow-provider、umans-provider、model-resolver） | modify/delete 冲突，保持删除 |
+| `packages/coding-agent/src/utils/mupdf-wasm-embed.ts` | 上游已整体移除（PDF 能力迁移 `pdf-inspector`），本地定制随之作废，无需恢复 |
+| `packages/natives/native/embedded-addon.js` | 上游重构：`embed-native.ts` 模块化为 `embedNativeAddon()` + 版本哨兵检查；源码仍为 `null`（构建时填充），本地无差异无需处理 |
+
+验证：`catalog`、`ai`、`agent`、`tui`、`coding-agent` 等全部 17 个包 `bun run check:types` 通过；定制项（`registry.ts` 空 `ALL`、`OAuthProvider = string`、`GeneratedProvider = string`、`startup.checkUpdate: false`、`marketplace.autoUpdate: "off"`、`generate-models.ts` stub、无隐式本地 discovery）均保留。
+
